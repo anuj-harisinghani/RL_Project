@@ -69,6 +69,6 @@ class Population:
             pass
 
     @staticmethod
-    def network():
+    def network(observation):
         # neural network for taking in observations and predicting what action to take
         return 0
