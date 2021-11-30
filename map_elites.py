@@ -1,74 +1,177 @@
+import random
+
 import numpy as np
 import os
 import gym
 
+from NeuralNetwork import create_model_random
+
 env = gym.make('Humanoid-v2')
 n_actions = env.action_space.shape[0]
 n_obs = env.observation_space.shape[0]
+make_one_action = True
 
 
 class MapElites:
-    def __init__(self, archive_shape):
-        self.archive = self.random_init_archive(archive_shape)
+    def __init__(self, n_behaviors=2, n_niches=100, arch_shape=None,
+                 map_iterations=100, n_init_niches=25, dist_threshold=0.5,
+                 fit_generations=50):
+
+        # archive variables
+        self.n_behaviors = n_behaviors
+        self.n_niches = n_niches
+        self.arch_shape = arch_shape
+        self.archive = None
+        self.genome_map = None
+
+        # map elites algorithm variables
+        self.map_iterations = map_iterations
+        self.n_init_niches = n_init_niches
+        self.dist_threshold = dist_threshold
+
+        # genome variables
+        self.fit_generations = fit_generations
+
+        # initialize archive with zeros and the given dimensions
+        self.init_archive()
+
+    # initialize archive with zeros and
+    # create genome map that keeps genome in cell (b1, b2) with b1, b2 being indices from the corresponding cell in archive
+    def init_archive(self):
+        if self.arch_shape is None:
+            # create an archive with the given arch_dims and arch_size
+            self.arch_shape = tuple(self.n_behaviors*[self.n_niches])
+
+        # self.archive = np.random.random(shape)
+        self.archive = np.zeros(self.arch_shape)
+        self.genome_map = np.empty(shape=self.archive.shape, dtype='object')
+
+    # generate a random solution (network/genome)
+    def generate_random_solution(self):
+        return Individual(self.fit_generations).init_random_genome()
+
+    # randomly choose a non-empty cell from the archive
+    def random_selection_from_archive(self):
+        non_empty_indices = np.argwhere(self.archive != 0)
+        r, c = random.choice(non_empty_indices)
+
+        return r, c
 
     def default_algorithm(self):
-        pass
+        for i in range(self.map_iterations):
+
+            # generate random solution if i < n_init_niches
+            if i < self.n_init_niches:
+                x = Individual(self.fit_generations, self.lr, self.dist_threshold)
+                x.init_random_genome()
+
+            # else, select randomly from the archive and mutate
+            else:
+                # get the archive indices of the randomly selected individual
+                r, c = self.random_selection_from_archive()
+                x = self.genome_map[r][c]  # get the actual genome that was stored in those indices
+                x = x.mutate_genome(self.arch_shape, r, c)  # mutate the genome
+
+            # get behavior metric value and performance from fit_genome
+            # behavior_indices = x.get_behavior()
+            fitness = x.fit_genome()
+
 
     def novelty_based_algorithm(self):
         pass
 
-    @staticmethod
-    def random_init_archive(arch_dims=2, arch_size=100, arch_shape=None):
-        if arch_shape is None:
-            # create an archive with the given arch_dims and arch_size
-            shape = tuple(arch_dims*[arch_size])
-        else:
-            # create an archive with the given shape
-            shape = arch_shape
-        empty_archive = np.zeros(shape)
-        archive = np.random.random(shape)
 
-        # incomplete - needs a way to only initialize G number of spaces in the archive
+class Individual:
+    def __init__(self, fit_generations, dist_threshold):
+        self.generations = fit_generations
+        self.dist_threshold = dist_threshold
 
-        return archive
+        self.fitness = None
+        self.genome = None
 
-
-class Population:
-    def __init__(self, g, f, b):
-        self.genome = g
-        self.fitness = f
-        self.behavior_features = b
+        self.mean = np.random.uniform(-2, 2)
+        self.stddev = np.random.uniform(-1, 1)
         self.n_actions = n_actions
         self.n_obs = n_obs
 
-    # @staticmethod
-    def fit_genome(self, g, iterations):
+    def init_random_genome(self):
+        self.genome = create_model_random(self.n_obs, self.n_actions, self.mean, self.stddev)
+
+    # function to fit the genome and produce total fitness score after specified number of generations
+    def fit_genome(self):
+        """
+        :return: fitness score after given generations
+        """
+
         # call the mujoco environment and run the genome g in it
-        env = gym.make('Humanoid-v2')
-        env.reset()
+        genome_fitness = []
+        simulation = gym.make('Humanoid-v2')
+        obs = simulation.reset()
 
-        for _ in range(iterations):
-            some_action = self.network()
-            env.step(some_action)
+        for g in range(self.generations):
+            env.reset()
+            generation_reward = []
+            while True:  # for i in range(iterations):
+                preds = self.genome.predict(obs.reshape(-1, len(obs)))
 
-    @staticmethod
-    def mutate_genome(g, lr, k):
+                if make_one_action:
+                    # preds is a (1, 17) shape vector, choose one action based on softmax
+                    action = np.zeros(n_actions)
+                    action[preds.argmax()] = 1
+
+                else:
+                    action = preds
+
+                # step using the predicted action vector
+                obs, reward, done, info = simulation.step(action)
+                generation_reward.append(reward)
+
+                if done:
+                    print(g, 'done')
+                    genome_fitness.append(generation_reward)
+                    break
+
+        env.close()
+
+        return genome_fitness
+
+    def mutate_genome(self, arch_shape, r, c):
         """
-        :param g: the genotype to mutate
-        :param lr: learning rate alpha
-        :param k: the number of neighbors found within a certain threshold of the individual we want to mutate
-                  k will be None if it's the base algorithm of MAP Elites, otherwise it'll be an int
-        :return: the mutated individual
+        :return: the mutated genome
         """
 
-        if k is None:
-            # base algorithm mutation - random
-            pass
+        if self.dist_threshold is None:
+            k = 1
+
         else:
             # given an int value for k, make the mutation stronger with high k, and weak with low k
-            pass
+            k = self.get_n_neighbors(arch_shape, r, c)
 
-    @staticmethod
-    def network(observation):
-        # neural network for taking in observations and predicting what action to take
-        return 0
+        weights = self.genome.get_weights()
+
+        # adding perturbations based on the number of neighbors found within the distance threshold to each layer separately
+        for i in range(len(weights)):
+            weights[i] += k * np.random.uniform(-1, 1, weights[i].shape)
+
+        self.genome.set_weights(weights)
+        return self.genome
+
+    # get number of neighbors that sit in a given distance threshold
+    # with help from this answer on StackOverflow: https://stackoverflow.com/a/44874588
+    def get_n_neighbors(self, arch_shape, r, c):
+        y, x = np.ogrid[:arch_shape[0], :arch_shape[1]]
+
+        # get euclidean distances of all elements in the archive
+        dist_from_given_indices = np.sqrt((x - c)**2 + (y - r)**2)
+
+        # create mask on archive that shows True if a cell is within the distance threshold, and False if it isn't
+        mask = dist_from_given_indices <= self.dist_threshold
+
+        # k will be the number of cells found in the mask that are True (i.e., within the distance threshold)
+        k = len(np.argwhere(mask == True))
+        return k
+
+
+
+
+

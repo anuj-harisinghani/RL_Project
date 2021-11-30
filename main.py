@@ -1,10 +1,9 @@
 import os
 
 import gym
-import mujoco_py
 from multiprocessing import Pool
-
 from gym.envs.mujoco import humanoid
+# import mujoco_py
 
 
 def main(e):
@@ -27,7 +26,7 @@ def main(e):
 
 if __name__ == '__main__':
     __file__ = 'main.py'
-    cpu_count = os.cpu_count()
+    cpu_count = os.cpu_count() - 2
     pool = Pool(cpu_count)
     op = [pool.apply_async(main, args=(e,)) for e in range(50)]
 
