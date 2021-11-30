@@ -13,7 +13,7 @@ def create_model_random(n_obs, n_actions, mean, stddev):
     model = models.Sequential()
 
     # input layer
-    model.add(layers.Dense(n_obs, input_dim=n_hidden, activation='sigmoid', kernel_initializer=random_kernel_for_layer(mean, stddev)))
+    model.add(layers.Dense(n_obs, activation='sigmoid', kernel_initializer=random_kernel_for_layer(mean, stddev)))
     # hidden layer
     model.add(layers.Dense(n_hidden, activation='sigmoid', kernel_initializer=random_kernel_for_layer(mean, stddev)))
     # output layer

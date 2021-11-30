@@ -4,18 +4,30 @@ import numpy as np
 import os
 import gym
 
-from NeuralNetwork import create_model_random
+from NeuralNetwork import create_model_random, create_model_random_2, create_model, create_model_2
 
 env = gym.make('Humanoid-v2')
 n_actions = env.action_space.shape[0]
 n_obs = env.observation_space.shape[0]
-make_one_action = True
+make_one_action = False
+
+# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 
 class MapElites:
     def __init__(self, n_behaviors=2, n_niches=100, arch_shape=None,
                  map_iterations=100, n_init_niches=25, dist_threshold=0.5,
                  fit_generations=50):
+
+        """
+        :param n_behaviors: number of behaviors to track - defines dimensions of archive
+        :param n_niches: the granularity of archive - this and n_behaviors will make a square archive
+        :param arch_shape: (optional) only to specify shape of archive directly (if square archive is not required)
+        :param map_iterations: number of iterations of main map elites algorithm
+        :param n_init_niches: number of niches to randomly initialize, after which niches will be found by mutation
+        :param dist_threshold: the threshold within which neighbors will be found (for custom mutation)
+        :param fit_generations: number of generations to fit each genome for
+        """
 
         # archive variables
         self.n_behaviors = n_behaviors
@@ -57,12 +69,33 @@ class MapElites:
 
         return r, c
 
+    # default MAP Elites algorithm
     def default_algorithm(self):
         for i in range(self.map_iterations):
 
             # generate random solution if i < n_init_niches
             if i < self.n_init_niches:
-                x = Individual(self.fit_generations, self.dist_threshold)
+                x = Individual(fit_generations=self.fit_generations, dist_threshold=None)
+                x.init_random_genome()
+
+            # else, select randomly from the archive and mutate
+            else:
+                # get the archive indices of the randomly selected individual
+                r, c = self.random_selection_from_archive()
+                x = self.genome_map[r][c]  # get the actual genome that was stored in those indices
+                x = x.mutate_genome(self.arch_shape, r, c)  # mutate the genome
+
+            # get behavior metric value and performance from fit_genome
+            # behavior_indices = x.get_behavior()
+            fitness = x.fit_genome()
+
+    # MAP Elites algorithm with Novelty-based mutation
+    def novelty_based_algorithm(self):
+        for i in range(self.map_iterations):
+
+            # generate random solution if i < n_init_niches
+            if i < self.n_init_niches:
+                x = Individual(fit_generations=self.fit_generations, dist_threshold=self.dist_threshold)
                 x.init_random_genome()
 
             # else, select randomly from the archive and mutate
@@ -77,11 +110,10 @@ class MapElites:
             fitness = x.fit_genome()
 
 
-    def novelty_based_algorithm(self):
-        pass
-
-
 class Individual:
+    """
+    Class Individual - makes each genome an object
+    """
     def __init__(self, fit_generations, dist_threshold):
         self.generations = fit_generations
         self.dist_threshold = dist_threshold
@@ -96,7 +128,7 @@ class Individual:
 
     # randomly initialize a genome / network
     def init_random_genome(self):
-        self.genome = create_model_random(self.n_obs, self.n_actions, self.mean, self.stddev)
+        self.genome = create_model_random_2(self.n_obs, self.n_actions, self.mean, self.stddev)
 
     # function to fit the genome and produce total fitness score after specified number of generations
     def fit_genome(self):
@@ -107,12 +139,11 @@ class Individual:
         # call the mujoco environment and run the genome g in it
         genome_fitness = []
         simulation = gym.make('Humanoid-v2')
-        obs = simulation.reset()
 
         for g in range(self.generations):
-            env.reset()
+            obs = simulation.reset()
             generation_reward = []
-            while True:  # for i in range(iterations):
+            while True:  # for _ in range(100000):
                 preds = self.genome.predict(obs.reshape(-1, len(obs)))
 
                 if make_one_action:
@@ -124,6 +155,8 @@ class Individual:
                     action = preds
 
                 # step using the predicted action vector
+                # simulation.render()
+                # action = simulation.action_space.sample()
                 obs, reward, done, info = simulation.step(action)
                 generation_reward.append(reward)
 
@@ -132,8 +165,8 @@ class Individual:
                     genome_fitness.append(generation_reward)
                     break
 
-        env.close()
-
+        simulation.close()
+        self.fitness = np.sum(genome_fitness)
         return genome_fitness
 
     # mutation function
@@ -144,9 +177,7 @@ class Individual:
 
         if self.dist_threshold is None:
             k = 1
-
         else:
-            # given an int value for k, make the mutation stronger with high k, and weak with low k
             k = self.get_n_neighbors(arch_shape, r, c)
 
         weights = self.genome.get_weights()
