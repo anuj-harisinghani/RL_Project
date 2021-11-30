@@ -133,6 +133,10 @@ class Individual:
     # function to fit the genome and produce total fitness score after specified number of generations
     def fit_genome(self):
         """
+        use this function to optimize the network by simulating it, use GA or ES or something
+        P.S. NO NEED TO OPTIMIZE USING GA OR ES - JUST LET THE GENOTYPE RUN AND RECORD ITS FITNESS AND BEHAVIOR METRICS
+        THEN USE THOSE VALUES TO FILL THE ARCHIVE. LET THE MUTATION OF GENOTYPE CREATE NEW GENOTYPES AND IT WILL OPTIMIZE
+        GENOTYPES FOUND IN A CELL IN THE ARCHIVE.
         :return: fitness score after given generations
         """
 
