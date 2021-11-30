@@ -62,7 +62,7 @@ class MapElites:
 
             # generate random solution if i < n_init_niches
             if i < self.n_init_niches:
-                x = Individual(self.fit_generations, self.lr, self.dist_threshold)
+                x = Individual(self.fit_generations, self.dist_threshold)
                 x.init_random_genome()
 
             # else, select randomly from the archive and mutate
@@ -94,6 +94,7 @@ class Individual:
         self.n_actions = n_actions
         self.n_obs = n_obs
 
+    # randomly initialize a genome / network
     def init_random_genome(self):
         self.genome = create_model_random(self.n_obs, self.n_actions, self.mean, self.stddev)
 
@@ -135,6 +136,7 @@ class Individual:
 
         return genome_fitness
 
+    # mutation function
     def mutate_genome(self, arch_shape, r, c):
         """
         :return: the mutated genome
