@@ -29,12 +29,14 @@ if __name__ == '__main__':
     pool = Pool(cpu_count)
     op = [pool.apply_async(main, args=(e,)) for e in range(50)]
 
-
+import time
 from map_elites import Individual
+last_time = time.time()
 x = Individual(50, 5)
 x.init_random_genome()
 r = x.fit_genome()
 
+time_taken = time.time() - last_time
 
 
 

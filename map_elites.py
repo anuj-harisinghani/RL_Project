@@ -207,8 +207,3 @@ class Individual:
         # k will be the number of cells found in the mask that are True (i.e., within the distance threshold)
         k = len(np.argwhere(mask == True))
         return k
-
-
-
-
-
