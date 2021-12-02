@@ -1,7 +1,12 @@
-import numpy as np
-import os
-import tensorflow as tf
 from tensorflow.keras import models, layers, initializers
+
+
+'''
+extra info:
+
+remove tensorflow gpu
+neural network with less layers but more neurons performs faster. 
+'''
 
 
 def random_kernel_for_layer(mean, stddev):
@@ -9,11 +14,12 @@ def random_kernel_for_layer(mean, stddev):
 
 
 def create_model_random(n_obs, n_actions, mean, stddev):
-    n_hidden = 75
+    n_hidden = 128
+    print('create random model with n_hidden=', n_hidden)
     model = models.Sequential()
 
     # input layer
-    model.add(layers.Dense(n_obs, activation='sigmoid', kernel_initializer=random_kernel_for_layer(mean, stddev)))
+    model.add(layers.Dense(n_hidden, input_dim=n_obs, activation='sigmoid', kernel_initializer=random_kernel_for_layer(mean, stddev)))
     # hidden layer
     model.add(layers.Dense(n_hidden, activation='sigmoid', kernel_initializer=random_kernel_for_layer(mean, stddev)))
     # output layer
@@ -27,8 +33,9 @@ def create_model_random(n_obs, n_actions, mean, stddev):
     return model
 
 
-def create_model_random_2(n_obs, n_actions, mean, stddev):
-    n_hidden = 75
+def create_model_random_2(n_obs, n_actions, mean, stddev, n_hidden):
+    # n_hidden = 100
+    # print('create random model 2 with n_hidden=', n_hidden)
     model = models.Sequential()
 
     # input layer
@@ -42,7 +49,7 @@ def create_model_random_2(n_obs, n_actions, mean, stddev):
                   loss='categorical_crossentropy',
                   metrics=['categorical_accuracy'])
 
-    print(model.summary())
+    # print(model.summary())
     return model
 
 
