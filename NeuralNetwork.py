@@ -68,7 +68,7 @@ def create_model(n_obs, n_actions):
                   loss='categorical_crossentropy',
                   metrics=['categorical_accuracy'])
 
-    print(model.summary())
+    # print(model.summary())
     return model
 
 

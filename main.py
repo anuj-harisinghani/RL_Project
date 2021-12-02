@@ -76,7 +76,7 @@ def fit(index):
     x = Individual(50, 5, 75)
     x.init_random_genome()
     r = x.fit_genome()
-    genotype = np.array(x.genome.weights())
+    # genotype = np.array(x.genome.weights())
     # r = [0, 1]
     # genotype = [0, 0]
     fit_path = os.path.join(archive_path, filename_format.format(index, index))
