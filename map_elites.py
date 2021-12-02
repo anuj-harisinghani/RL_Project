@@ -11,13 +11,15 @@ n_actions = env.action_space.shape[0]
 n_obs = env.observation_space.shape[0]
 make_one_action = False
 
-# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+# uncomment this line to not use the GPU - somehow GPU is slower for running the neural network
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 class MapElites:
     def __init__(self, n_behaviors=2, n_niches=100, arch_shape=None,
                  map_iterations=100, n_init_niches=25, dist_threshold=0.5,
-                 fit_generations=50):
+                 fit_generations=50, n_hidden=75):
 
         """
         :param n_behaviors: number of behaviors to track - defines dimensions of archive
@@ -43,6 +45,7 @@ class MapElites:
 
         # genome variables
         self.fit_generations = fit_generations
+        self.n_hidden = n_hidden
 
         # initialize archive with zeros and the given dimensions
         self.init_archive()
@@ -60,7 +63,7 @@ class MapElites:
 
     # generate a random solution (network/genome)
     def generate_random_solution(self):
-        return Individual(self.fit_generations).init_random_genome()
+        return Individual(self.fit_generations, self.dist_threshold, self.n_hidden).init_random_genome()
 
     # randomly choose a non-empty cell from the archive
     def random_selection_from_archive(self):
@@ -75,7 +78,7 @@ class MapElites:
 
             # generate random solution if i < n_init_niches
             if i < self.n_init_niches:
-                x = Individual(fit_generations=self.fit_generations, dist_threshold=None)
+                x = Individual(fit_generations=self.fit_generations, dist_threshold=None, n_hidden=self.n_hidden)
                 x.init_random_genome()
 
             # else, select randomly from the archive and mutate
@@ -95,7 +98,7 @@ class MapElites:
 
             # generate random solution if i < n_init_niches
             if i < self.n_init_niches:
-                x = Individual(fit_generations=self.fit_generations, dist_threshold=self.dist_threshold)
+                x = Individual(fit_generations=self.fit_generations, dist_threshold=self.dist_threshold, n_hidden=self.n_hidden)
                 x.init_random_genome()
 
             # else, select randomly from the archive and mutate
@@ -114,9 +117,10 @@ class Individual:
     """
     Class Individual - makes each genome an object
     """
-    def __init__(self, fit_generations, dist_threshold):
+    def __init__(self, fit_generations, dist_threshold, n_hidden):
         self.generations = fit_generations
         self.dist_threshold = dist_threshold
+        self.n_hidden = n_hidden
 
         self.fitness = None
         self.genome = None
@@ -128,7 +132,7 @@ class Individual:
 
     # randomly initialize a genome / network
     def init_random_genome(self):
-        self.genome = create_model_random_2(self.n_obs, self.n_actions, self.mean, self.stddev)
+        self.genome = create_model_random_2(self.n_obs, self.n_actions, self.mean, self.stddev, self.n_hidden)
 
     # function to fit the genome and produce total fitness score after specified number of generations
     def fit_genome(self):
@@ -165,7 +169,7 @@ class Individual:
                 generation_reward.append(reward)
 
                 if done:
-                    print(g, 'done')
+                    # print(g, 'done')
                     genome_fitness.append(generation_reward)
                     break
 
