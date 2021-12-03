@@ -1,10 +1,9 @@
 import os
 
 import gym
+import mujoco_py
 from gym.envs.mujoco.humanoid import HumanoidEnv
 from multiprocessing import Pool
-
-
 
 env = HumanoidEnv()
 obs = env.reset()
