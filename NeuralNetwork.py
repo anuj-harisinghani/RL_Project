@@ -1,6 +1,4 @@
 from tensorflow.keras import models, layers, initializers
-
-
 '''
 extra info:
 
@@ -13,79 +11,46 @@ def random_kernel_for_layer(mean, stddev):
     return initializers.RandomNormal(mean=mean, stddev=stddev)
 
 
-def create_model_random(n_obs, n_actions, mean, stddev):
-    n_hidden = 128
-    print('create random model with n_hidden=', n_hidden)
-    model = models.Sequential()
+class NeuralNetwork:
+    def __init__(self, n_obs, n_actions, n_hidden, mean, stddev):
+        self.n_obs = n_obs
+        self.n_actions = n_actions
+        self.n_hidden = n_hidden
+        self.mean = mean
+        self.stddev = stddev
 
-    # input layer
-    model.add(layers.Dense(n_hidden, input_dim=n_obs, activation='sigmoid', kernel_initializer=random_kernel_for_layer(mean, stddev)))
-    # hidden layer
-    model.add(layers.Dense(n_hidden, activation='sigmoid', kernel_initializer=random_kernel_for_layer(mean, stddev)))
-    # output layer
-    model.add(layers.Dense(n_actions, activation='softmax', kernel_initializer=random_kernel_for_layer(mean, stddev)))
+    def create_model_random(self):
+        model = models.Sequential()
 
-    model.compile(optimizer='adam',
-                  loss='categorical_crossentropy',
-                  metrics=['categorical_accuracy'])
+        # input layer
+        model.add(layers.Dense(self.n_hidden, input_dim=self.n_obs, activation='sigmoid',
+                               kernel_initializer=random_kernel_for_layer(self.mean, self.stddev)))
+        # hidden layer
+        # model.add(layers.Dense(n_hidden, activation='sigmoid', kernel_initializer=random_kernel_for_layer(mean, stddev)))
+        # output layer
+        model.add(layers.Dense(self.n_actions, activation='softmax',
+                               kernel_initializer=random_kernel_for_layer(self.mean, self.stddev)))
 
-    print(model.summary())
-    return model
+        model.compile(optimizer='adam',
+                      loss='categorical_crossentropy',
+                      metrics=['categorical_accuracy'])
 
+        # print(model.summary())
+        return model
 
-def create_model_random_2(n_obs, n_actions, mean, stddev, n_hidden):
-    # n_hidden = 100
-    # print('create random model 2 with n_hidden=', n_hidden)
-    model = models.Sequential()
+    def create_model(self):
+        model = models.Sequential()
 
-    # input layer
-    model.add(layers.Dense(n_hidden, input_dim=n_obs, activation='sigmoid', kernel_initializer=random_kernel_for_layer(mean, stddev)))
-    # hidden layer
-    # model.add(layers.Dense(n_hidden, activation='sigmoid', kernel_initializer=random_kernel_for_layer(mean, stddev)))
-    # output layer
-    model.add(layers.Dense(n_actions, activation='softmax', kernel_initializer=random_kernel_for_layer(mean, stddev)))
+        # input layer
+        model.add(layers.Dense(self.n_hidden, input_dim=self.n_obs, activation='sigmoid'))
+        # hidden layer
+        # model.add(layers.Dense(n_hidden, activation='sigmoid', kernel_initializer=random_kernel_for_layer(mean, stddev)))
+        # output layer
+        model.add(layers.Dense(self.n_actions, activation='softmax'))
 
-    model.compile(optimizer='adam',
-                  loss='categorical_crossentropy',
-                  metrics=['categorical_accuracy'])
+        model.compile(optimizer='adam',
+                      loss='categorical_crossentropy',
+                      metrics=['categorical_accuracy'])
 
-    # print(model.summary())
-    return model
-
-
-def create_model(n_obs, n_actions):
-    n_hidden = 75
-    model = models.Sequential()
-
-    # input layer
-    model.add(layers.Dense(n_obs, input_dim=n_hidden, activation='sigmoid'))
-    # hidden layer
-    model.add(layers.Dense(n_hidden, activation='sigmoid'))
-    # output layer
-    model.add(layers.Dense(n_actions, activation='softmax'))
-
-    model.compile(optimizer='adam',
-                  loss='categorical_crossentropy',
-                  metrics=['categorical_accuracy'])
-
-    # print(model.summary())
-    return model
-
-
-def create_model_2(n_obs, n_actions):
-    n_hidden = 75
-    model = models.Sequential()
-
-    # input layer
-    model.add(layers.Dense(n_hidden, input_dim=n_obs, activation='sigmoid'))
-    # hidden layer
-    # model.add(layers.Dense(n_hidden, activation='sigmoid', kernel_initializer=random_kernel_for_layer(mean, stddev)))
-    # output layer
-    model.add(layers.Dense(n_actions, activation='softmax'))
-
-    model.compile(optimizer='adam',
-                  loss='categorical_crossentropy',
-                  metrics=['categorical_accuracy'])
-
-    print(model.summary())
-    return model
+        print(model.summary())
+        return model

@@ -77,7 +77,7 @@ np.warnings.filterwarnings('error', category=np.VisibleDeprecationWarning)
 def fit(index):
     print('instance start', index)
     # lt = time.time()
-    x = Individual(50, 5, 75)
+    x = Individual(50, 5, 34)
     x.init_random_genome()
     r = x.fit_genome()
     genotype = x.genome

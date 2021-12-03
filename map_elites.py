@@ -2,16 +2,20 @@ import random
 
 import numpy as np
 import os
+import math
 import gym
+from tqdm import tqdm
+from gym.envs.mujoco.humanoid import HumanoidEnv, mass_center
 
-from NeuralNetwork import create_model_random, create_model_random_2, create_model, create_model_2
+from NeuralNetwork import NeuralNetwork
 
-env = gym.make('Humanoid-v2')
-n_actions = env.action_space.shape[0]
-n_obs = env.observation_space.shape[0]
+# getting environment variables
+ENV = HumanoidEnv()
+n_actions = ENV.action_space.shape[0]
+n_obs = ENV.observation_space.shape[0]
 make_one_action = False
 
-# uncomment this line to not use the GPU - somehow GPU is slower for running the neural network
+# Forcing code to use CPU - GPU is slow
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -75,7 +79,7 @@ class MapElites:
     # default MAP Elites algorithm
     def default_algorithm(self):
         for i in range(self.map_iterations):
-
+            x = None
             # generate random solution if i < n_init_niches
             if i < self.n_init_niches:
                 x = Individual(fit_generations=self.fit_generations, dist_threshold=None, n_hidden=self.n_hidden)
@@ -89,13 +93,15 @@ class MapElites:
                 x = x.mutate_genome(self.arch_shape, r, c)  # mutate the genome
 
             # get behavior metric value and performance from fit_genome
-            # behavior_indices = x.get_behavior()
-            fitness = x.fit_genome()
+            x.fit_genome()
+            fitness = x.fitness
+            step_dist = x.step_distance
+            vel = x.velocity
 
     # MAP Elites algorithm with Novelty-based mutation
     def novelty_based_algorithm(self):
         for i in range(self.map_iterations):
-
+            x = None
             # generate random solution if i < n_init_niches
             if i < self.n_init_niches:
                 x = Individual(fit_generations=self.fit_generations, dist_threshold=self.dist_threshold, n_hidden=self.n_hidden)
@@ -109,8 +115,12 @@ class MapElites:
                 x = x.mutate_genome(self.arch_shape, r, c)  # mutate the genome
 
             # get behavior metric value and performance from fit_genome
-            # behavior_indices = x.get_behavior()
-            fitness = x.fit_genome()
+            x.fit_genome()
+            fitness = x.fitness
+            step_dist = x.step_distance
+            vel = x.velocity
+
+
 
 
 class Individual:
@@ -123,6 +133,8 @@ class Individual:
         self.n_hidden = n_hidden
 
         self.fitness = None
+        self.step_distance = None
+        self.velocity = None
         self.genome = None
 
         self.mean = np.random.uniform(-2, 2)
@@ -132,7 +144,7 @@ class Individual:
 
     # randomly initialize a genome / network
     def init_random_genome(self):
-        self.genome = create_model_random_2(self.n_obs, self.n_actions, self.mean, self.stddev, self.n_hidden)
+        self.genome = NeuralNetwork(n_obs, n_actions, self.n_hidden, self.mean, self.stddev).create_model_random()
 
     # function to fit the genome and produce total fitness score after specified number of generations
     def fit_genome(self):
@@ -145,13 +157,28 @@ class Individual:
         """
 
         # call the mujoco environment and run the genome g in it
-        genome_fitness = []
-        simulation = gym.make('Humanoid-v2')
+        env = HumanoidEnv()
+        sim = env.sim
 
-        for g in range(self.generations):
-            obs = simulation.reset()
+        # fitness and behavior metrics - will be averaged across iterations, then averaged across generations
+        genome_fitness = []
+        step_distance = []
+        velocity = []
+        # speed metrics
+
+        for g in tqdm(range(self.generations), desc='fitting genome'):
+            obs = env.reset()
             generation_reward = []
-            while True:  # for _ in range(100000):
+
+            gen_step_distance = []  # step distance between contact.pos
+            foot_timestep = 0
+            foot_pos = np.array([0.0] * 3)
+
+            gen_velocity = []
+            center_of_mass = mass_center(env.model, sim)
+
+            # simulation
+            for iteration in range(100000):
                 preds = self.genome.predict(obs.reshape(-1, len(obs)))
 
                 if make_one_action:
@@ -163,34 +190,83 @@ class Individual:
                     action = preds
 
                 # step using the predicted action vector
-                # simulation.render()
-                # action = simulation.action_space.sample()
-                obs, reward, done, info = simulation.step(action)
+                obs, reward, done, info = env.step(action)
                 generation_reward.append(reward)
 
+                # behavior metric 1: step distance
+
+                # calculate foot stepping distances
+                for i in range(len(sim.data.contact)):
+                    contact = sim.data.contact[i]
+
+                    '''
+                    contact ids:
+                    floor = 0
+                    left foot = 11
+                    right foot = 8
+                    '''
+
+                    # initial filter - keeping contacts with the floor and removing all others
+                    geom_list = [contact.geom1, contact.geom2]
+                    if contact.geom1 != contact.geom2 and 0 in geom_list:
+
+                        # check for any foot touching
+                        if 11 in geom_list or 8 in geom_list:
+                            dist_between_steps = math.dist(contact.pos, foot_pos)
+                            # if iteration > foot_timestep and delta_distance_from_origin > 0:
+                            if iteration > foot_timestep:
+                                # print(geom_list)
+                                # print('pos', contact.pos, foot_pos, dist_between_steps)
+
+                                # append changes in step distances
+                                gen_step_distance.append(dist_between_steps)
+
+                                # update previous distance and position values
+                                # dist = contact.dist
+                                foot_pos = contact.pos
+                                foot_timestep = iteration
+
+                                # print('updated timesteps and position: ', foot_timestep, dist)
+
+                # calculate speed - NOT using cvel (center of mass velocity), instead using mass_center from Humanoid
+                new_center_of_mass = mass_center(env.model, sim)
+                dt = env.model.opt.timestep * env.frame_skip
+                v = (new_center_of_mass - center_of_mass) / dt
+                gen_velocity.append(v)
+
+                center_of_mass = new_center_of_mass
+
+                # check end condition
                 if done:
-                    # print(g, 'done')
-                    genome_fitness.append(generation_reward)
+                    genome_fitness.append(np.mean(generation_reward))
+                    step_distance.append(np.mean(gen_step_distance))
+                    velocity.append(np.mean(gen_velocity))
                     break
 
-        simulation.close()
+        env.close()
         self.fitness = np.sum(genome_fitness)
-        return genome_fitness
+        self.step_distance = np.mean(step_distance)
+        self.velocity = np.mean(velocity)
+        # return genome_fitness
 
     # mutation function
     def mutate_genome(self, arch_shape, r, c):
         """
-        :return: the mutated genome
+
+        :param arch_shape: shape of the archive
+        :param r: row index of individual selected in archive
+        :param c: col index of individual selected in archive
+        :return:
         """
 
+        # make distinction between default map_elites and novelty_based map_elites
         if self.dist_threshold is None:
             k = 1
         else:
             k = self.get_n_neighbors(arch_shape, r, c)
 
-        weights = self.genome.get_weights()
-
         # adding perturbations based on the number of neighbors found within the distance threshold to each layer separately
+        weights = self.genome.get_weights()
         for i in range(len(weights)):
             weights[i] += k * np.random.uniform(-1, 1, weights[i].shape)
 
