@@ -1,8 +1,13 @@
 import os
 
 import gym
+from gym.envs.mujoco.humanoid import HumanoidEnv
 from multiprocessing import Pool
 
+
+
+env = HumanoidEnv()
+obs = env.reset()
 
 
 # def main(e):
@@ -76,7 +81,7 @@ def fit(index):
     x = Individual(50, 5, 75)
     x.init_random_genome()
     r = x.fit_genome()
-    # genotype = np.array(x.genome.weights())
+    genotype = x.genome
     # r = [0, 1]
     # genotype = [0, 0]
     fit_path = os.path.join(archive_path, filename_format.format(index, index))
