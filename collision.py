@@ -1,32 +1,37 @@
-
-'''
+"""
 Collision.py - code provided by WuXinyang2012 user on GitHub
 https://gist.github.com/WuXinyang2012/b6649817101dfcb061eff901e9942057
 
 Using this code to extract collisions of the humanoid with the ground for detecting the steps taken by the robot.
 As step length is one of the behavior metrics.
-'''
-
-# !/usr/bin/env python
+"""
 
 import os
 import mujoco_py
 import numpy as np
+from gym.envs.mujoco.humanoid import HumanoidEnv
+import time
 
-PATH_TO_HUMANOID_XML = os.path.expanduser('~/.mujoco/mujoco200/model/humanoid.xml')
-# PATH_TO_HUMANOID_XML = os.path.expanduser('/home/rfa-xw/anaconda3/envs/mujoco-py/lib/python3.6/site-packages/gym/envs/robotics/assets/fetch/reach.xml')
+# PATH_TO_HUMANOID_XML = os.path.expanduser('~/.mujoco/mujoco200/model/humanoid.xml')
+PATH_TO_HUMANOID_XML = os.path.expanduser('/home/anuj/anaconda3/envs/RL/lib/python3.8/site-packages/gym/envs/mujoco/assets/humanoid.xml')
 
 # Load the model and make a simulator
 model = mujoco_py.load_model_from_path(PATH_TO_HUMANOID_XML)  # model: class PyMjModel
-sim = mujoco_py.MjSim(model)
+# sim = mujoco_py.MjSim(model)
 # viewer = mujoco_py.MjViewer(sim)
+env = HumanoidEnv()
+
 
 for _ in range(1):
-    sim.reset()
+    # sim.reset()
+    obs = env.reset()
+    sim = env.sim
     # Simulate 1000 steps so humanoid has fallen on the ground
     for _ in range(1000):
         # viewer.render()
-        sim.step()
+        # sim.step()
+        env.render()
+        env.step(env.action_space.sample())
 
     print('number of contacts', sim.data.ncon)
     for i in range(sim.data.ncon):
