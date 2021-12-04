@@ -3,7 +3,7 @@ import random
 import numpy as np
 import os
 import math
-import gym
+import time
 from tqdm import tqdm
 from gym.envs.mujoco.humanoid import HumanoidEnv, mass_center
 
@@ -58,6 +58,7 @@ class MapElites:
         self.map_iterations = map_iterations
         self.n_init_niches = n_init_niches
         self.dist_threshold = dist_threshold
+        self.time_taken = None
 
         # genome variables
         self.fit_generations = fit_generations
@@ -132,8 +133,12 @@ class MapElites:
         the distance threshold feature for novelty_based MAP Elites algorithm
         """
 
+        # keeping track of wall-clock time
+        start_time = time.time()
+
         # if bootstrap_archive is not given, then bussiness as usual - initialize n_init_niches
         # if bootstrap_archive is given, then skip initializing n_init_niches
+
         if self.bootstrap_archive is None:
             start_index = 0
         else:
@@ -156,6 +161,9 @@ class MapElites:
             # get behavior metric value and performance from fit_genome
             x.fit_genome()
             self.update_archive(x)
+
+        end_time = time.time()
+        self.time_taken = end_time - start_time
 
     '''
     # MAP Elites algorithm with Novelty-based mutation
