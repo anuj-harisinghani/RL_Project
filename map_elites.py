@@ -19,8 +19,6 @@ make_one_action = False
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-map_iter = 0
-
 
 class MapElites:
     def __init__(self, mode='default',
@@ -49,13 +47,14 @@ class MapElites:
         # archive variables
         self.n_behaviors = n_behaviors
         self.n_niches = n_niches
-        self.bootstrap_archive = bootstrap_archive
-        self.bootstrap_genome_map = bootstrap_genome_map
         self.arch_shape = None
         self.archive = None
         self.genome_map = None
 
         # map elites algorithm variables
+        self.mode = mode
+        self.bootstrap_archive = bootstrap_archive
+        self.bootstrap_genome_map = bootstrap_genome_map
         self.map_iterations = map_iterations
         self.n_init_niches = n_init_niches
         self.dist_threshold = dist_threshold
@@ -140,10 +139,7 @@ class MapElites:
         else:
             start_index = self.n_init_niches
 
-        for i in range(start_index, self.map_iterations):
-            global map_iter
-            map_iter = i
-
+        for i in tqdm(range(start_index, self.map_iterations), desc=self.mode+' map_iterations'):
             x = None
             # generate random solution if i < n_init_niches
             if i < self.n_init_niches:
@@ -211,6 +207,7 @@ class Individual:
         self.genome = NeuralNetwork(n_obs, n_actions, self.n_hidden, self.mean, self.stddev).create_model_random()
 
     # function to fit the genome and produce total fitness score after specified number of generations
+
     def fit_genome(self):
         """
         use this function to optimize the network by simulating it, use GA or ES or something
@@ -230,7 +227,7 @@ class Individual:
         velocity = []
         # speed metrics
 
-        for _ in tqdm(range(self.generations), desc=str(map_iter) + 'fitting genome'):
+        for _ in range(self.generations):
             obs = env.reset()
             generation_reward = []
 

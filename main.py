@@ -8,20 +8,23 @@ from map_elites import Individual
 # default params for MAPElites
 mode = 'default'
 n_behaviors = 2
-n_niches = 20
+# n_niches = 20
 bootstrap_archive = None
 bootstrap_genome_map = None
 map_iterations = 1000
-n_init_niches = 50
+# n_init_niches = 50
 
 # default params for Individual
 fit_generations = 10
 dist_threshold = None
 n_hidden = 35
 
+n_niches = 50
+n_cells = n_niches ** n_behaviors
+n_init_niches = int(0.4*n_cells)
 
 # creating bootstrap archive - created with n_behaviours and n_niches
-burner_map = MapElites()
+burner_map = MapElites(n_niches=n_niches, n_init_niches=n_init_niches)
 burner_map.init_archive()
 
 for i in range(n_init_niches):
@@ -39,6 +42,6 @@ indices = np.argwhere(bootstrap_archive != 0)
 
 
 
-
+default_map = MapElites(n_niches=n_niches, n_init_niches=n_init_niches)
 
 
