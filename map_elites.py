@@ -19,25 +19,29 @@ make_one_action = False
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
+map_iter = 0
+
 
 class MapElites:
     def __init__(self, mode='default',
-                 n_behaviors=2, n_niches=20, arch_shape=None, bootstrap_archive=None, bootstrap_genome_map=None,
-                 map_iterations=100, n_init_niches=25, dist_threshold=None,
-                 fit_generations=50, n_hidden=35):
+                 n_behaviors=2, n_niches=20,
+                 bootstrap_archive=None, bootstrap_genome_map=None,
+                 map_iterations=1000, n_init_niches=50,
+                 dist_threshold=None, fit_generations=10, n_hidden=35):
 
         """
         :param mode: mode of map_elites - can be 'default' or 'novelty-based'
 
         :param n_behaviors: number of behavior values - defines number of dimensions for archive
         :param n_niches: the granularity of archive - this and n_behaviors will make a square archive
-        :param arch_shape: (optional) only to specify shape of archive directly (if square archive is not required)
+
         :param bootstrap_archive: an archive already initialized with n_init_niches
+        :param bootstrap_genome_map: a genome map already initialized with n_init_niches
 
         :param map_iterations: number of iterations of main map elites algorithm
         :param n_init_niches: number of niches to randomly initialize, after which niches will be found by mutation
-        :param dist_threshold: the threshold within which neighbors will be found (for custom mutation)
 
+        :param dist_threshold: the threshold within which neighbors will be found (for custom mutation)
         :param fit_generations: number of generations to fit each genome for
         :param n_hidden: number of hidden nodes in the neural network
         """
@@ -45,9 +49,9 @@ class MapElites:
         # archive variables
         self.n_behaviors = n_behaviors
         self.n_niches = n_niches
-        self.arch_shape = arch_shape
         self.bootstrap_archive = bootstrap_archive
         self.bootstrap_genome_map = bootstrap_genome_map
+        self.arch_shape = None
         self.archive = None
         self.genome_map = None
 
@@ -105,7 +109,6 @@ class MapElites:
         """
         updates the archive, given the fitness and behavior metrics
         """
-        genome = x.genome
         fitness = x.fitness
         step_dist = x.step_distance * 10  # had to increase this value since they were so small
         velocity = x.velocity
@@ -120,8 +123,9 @@ class MapElites:
         row = np.argmin(np.abs(step_dist_range - step_dist))
         col = np.argmin(np.abs(vel_range - velocity))
 
-        self.archive[row][col] = fitness
-        self.genome_map[row][col] = genome
+        if fitness > self.archive[row][col]:
+            self.archive[row][col] = fitness
+            self.genome_map[row][col] = x
 
     def map_algorithm(self):
         """
@@ -137,6 +141,9 @@ class MapElites:
             start_index = self.n_init_niches
 
         for i in range(start_index, self.map_iterations):
+            global map_iter
+            map_iter = i
+
             x = None
             # generate random solution if i < n_init_niches
             if i < self.n_init_niches:
@@ -148,15 +155,10 @@ class MapElites:
                 # get the archive indices of the randomly selected individual
                 r, c = self.random_selection_from_archive()
                 x = self.genome_map[r][c]  # get the actual genome that was stored in those indices
-                x = x.mutate_genome(self.arch_shape, r, c)  # mutate the genome
+                x.mutate_genome(self.arch_shape, r, c)  # mutate the genome
 
             # get behavior metric value and performance from fit_genome
             x.fit_genome()
-            # fitness = x.fitness
-            # step_dist = x.step_distance
-            # vel = x.velocity
-            # genome = x.genome
-
             self.update_archive(x)
 
     '''
@@ -228,7 +230,7 @@ class Individual:
         velocity = []
         # speed metrics
 
-        for g in tqdm(range(self.generations), desc='fitting genome'):
+        for _ in tqdm(range(self.generations), desc=str(map_iter) + 'fitting genome'):
             obs = env.reset()
             generation_reward = []
 
