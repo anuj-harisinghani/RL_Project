@@ -201,8 +201,8 @@ class Individual:
         self.velocity = None
         self.genome = None
 
-        self.mean = np.random.uniform(-10, 10)
-        self.stddev = np.random.uniform(-2, 2)
+        self.mean = np.random.uniform(-5, 5)
+        self.stddev = np.random.uniform(-1, 1)
         self.n_actions = n_actions
         self.n_obs = n_obs
 
