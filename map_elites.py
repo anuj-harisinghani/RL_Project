@@ -21,24 +21,33 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 class MapElites:
-    def __init__(self, n_behaviors=2, n_niches=100, arch_shape=None,
-                 map_iterations=100, n_init_niches=25, dist_threshold=0.5,
-                 fit_generations=50, n_hidden=75):
+    def __init__(self, mode='default',
+                 n_behaviors=2, n_niches=20, arch_shape=None, bootstrap_archive=None, bootstrap_genome_map=None,
+                 map_iterations=100, n_init_niches=25, dist_threshold=None,
+                 fit_generations=50, n_hidden=35):
 
         """
-        :param n_behaviors: number of behaviors to track - defines dimensions of archive
+        :param mode: mode of map_elites - can be 'default' or 'novelty-based'
+
+        :param n_behaviors: number of behavior values - defines number of dimensions for archive
         :param n_niches: the granularity of archive - this and n_behaviors will make a square archive
         :param arch_shape: (optional) only to specify shape of archive directly (if square archive is not required)
+        :param bootstrap_archive: an archive already initialized with n_init_niches
+
         :param map_iterations: number of iterations of main map elites algorithm
         :param n_init_niches: number of niches to randomly initialize, after which niches will be found by mutation
         :param dist_threshold: the threshold within which neighbors will be found (for custom mutation)
+
         :param fit_generations: number of generations to fit each genome for
+        :param n_hidden: number of hidden nodes in the neural network
         """
 
         # archive variables
         self.n_behaviors = n_behaviors
         self.n_niches = n_niches
         self.arch_shape = arch_shape
+        self.bootstrap_archive = bootstrap_archive
+        self.bootstrap_genome_map = bootstrap_genome_map
         self.archive = None
         self.genome_map = None
 
@@ -54,35 +63,84 @@ class MapElites:
         # initialize archive with zeros and the given dimensions
         self.init_archive()
 
-    # initialize archive with zeros and
-    # create genome map that keeps genome in cell (b1, b2) with b1, b2 being indices from the corresponding cell in archive
     def init_archive(self):
-        if self.arch_shape is None:
-            # create an archive with the given arch_dims and arch_size
+        """
+        Archive Intializer
+
+        if provided with a bootstrap archive, make archive as the bootstrap_archive and go from there.
+        else, initialize archive with zeros
+        create genome map that keeps genome in cell (b1, b2) corresponding to the archive
+        """
+        if self.bootstrap_archive is not None:
+            # use bootstrap
+            self.archive = self.bootstrap_archive
+            self.arch_shape = self.bootstrap_archive.shape
+            self.genome_map = self.bootstrap_genome_map
+
+        else:
+            # create an empty archive with the given arch_dims and arch_size
             self.arch_shape = tuple(self.n_behaviors*[self.n_niches])
+            self.archive = np.zeros(self.arch_shape)
+            self.genome_map = np.empty(shape=self.archive.shape, dtype='object')
 
-        # self.archive = np.random.random(shape)
-        self.archive = np.zeros(self.arch_shape)
-        self.genome_map = np.empty(shape=self.archive.shape, dtype='object')
-
-    # generate a random solution (network/genome)
     def generate_random_solution(self):
+        """
+        generate a random solution (network/genome)
+        :return: Individual object which is initalized randomly
+        """
+
         return Individual(self.fit_generations, self.dist_threshold, self.n_hidden).init_random_genome()
 
-    # randomly choose a non-empty cell from the archive
     def random_selection_from_archive(self):
+        """
+        randomly choose a non-empty cell from the archive
+        :return: row and col indices of the chosen genome
+        """
+
         non_empty_indices = np.argwhere(self.archive != 0)
         r, c = random.choice(non_empty_indices)
-
         return r, c
 
-    # default MAP Elites algorithm
-    def default_algorithm(self):
-        for i in range(self.map_iterations):
+    def update_archive(self, x):  # genome, fitness, step_dist, velocity):
+        """
+        updates the archive, given the fitness and behavior metrics
+        """
+        genome = x.genome
+        fitness = x.fitness
+        step_dist = x.step_distance * 10  # had to increase this value since they were so small
+        velocity = x.velocity
+
+        max_step_dist = 1
+        max_vel = 5
+
+        step_dist_range = np.arange(0, max_step_dist, max_step_dist/self.n_niches)
+        vel_range = np.arange(0, max_vel, max_vel/self.n_niches)
+
+        # the archive is going to have step_distance as the rows and velocity as the columns
+        row = np.argmin(np.abs(step_dist_range - step_dist))
+        col = np.argmin(np.abs(vel_range - velocity))
+
+        self.archive[row][col] = fitness
+        self.genome_map[row][col] = genome
+
+    def map_algorithm(self):
+        """
+        MAP Elites algorithm - modified to take in a pre-initialized bootstrap_archive and to incorporate
+        the distance threshold feature for novelty_based MAP Elites algorithm
+        """
+
+        # if bootstrap_archive is not given, then bussiness as usual - initialize n_init_niches
+        # if bootstrap_archive is given, then skip initializing n_init_niches
+        if self.bootstrap_archive is None:
+            start_index = 0
+        else:
+            start_index = self.n_init_niches
+
+        for i in range(start_index, self.map_iterations):
             x = None
             # generate random solution if i < n_init_niches
             if i < self.n_init_niches:
-                x = Individual(fit_generations=self.fit_generations, dist_threshold=None, n_hidden=self.n_hidden)
+                x = Individual(self.fit_generations, self.dist_threshold, self.n_hidden)
                 x.init_random_genome()
 
             # else, select randomly from the archive and mutate
@@ -94,10 +152,14 @@ class MapElites:
 
             # get behavior metric value and performance from fit_genome
             x.fit_genome()
-            fitness = x.fitness
-            step_dist = x.step_distance
-            vel = x.velocity
+            # fitness = x.fitness
+            # step_dist = x.step_distance
+            # vel = x.velocity
+            # genome = x.genome
 
+            self.update_archive(x)
+
+    '''
     # MAP Elites algorithm with Novelty-based mutation
     def novelty_based_algorithm(self):
         for i in range(self.map_iterations):
@@ -119,7 +181,7 @@ class MapElites:
             fitness = x.fitness
             step_dist = x.step_distance
             vel = x.velocity
-
+        '''
 
 
 
@@ -137,8 +199,8 @@ class Individual:
         self.velocity = None
         self.genome = None
 
-        self.mean = np.random.uniform(-2, 2)
-        self.stddev = np.random.uniform(-1, 1)
+        self.mean = np.random.uniform(-10, 10)
+        self.stddev = np.random.uniform(-2, 2)
         self.n_actions = n_actions
         self.n_obs = n_obs
 
