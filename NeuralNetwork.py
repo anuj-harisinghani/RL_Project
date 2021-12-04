@@ -42,14 +42,16 @@ class NeuralNetwork:
         model = models.Sequential()
 
         # input layer
-        model.add(layers.Dense(self.n_hidden, input_dim=self.n_obs, activation='tanh'))
-        # hidden layer
+        model.add(layers.Input(shape=(self.n_obs,)))
+
+        model.add(layers.Dense(self.n_hidden, activation='tanh',
+                               kernel_initializer=random_kernel_for_layer(self.mean, self.stddev)))
         model.add(layers.Dense(self.n_hidden, activation='tanh',
                                kernel_initializer=random_kernel_for_layer(self.mean, self.stddev)))
         # output layer
         model.add(layers.Dense(self.n_actions, activation='softmax'))
 
-        model.compile(optimizer='adam',
+        model.compile(optimizer='sgd',
                       loss='categorical_crossentropy',
                       metrics=['categorical_accuracy'])
 

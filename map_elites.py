@@ -182,7 +182,6 @@ class MapElites:
         '''
 
 
-
 class Individual:
     """
     Class Individual - makes each genome an object
@@ -204,7 +203,7 @@ class Individual:
 
     # randomly initialize a genome / network
     def init_random_genome(self):
-        self.genome = NeuralNetwork(n_obs, n_actions, self.n_hidden, self.mean, self.stddev).create_model_random()
+        self.genome = NeuralNetwork(n_obs, n_actions, self.n_hidden, self.mean, self.stddev).create_model()
 
     # function to fit the genome and produce total fitness score after specified number of generations
 
@@ -257,7 +256,6 @@ class Individual:
                 generation_reward.append(reward)
 
                 # behavior metric 1: step distance
-
                 # calculate foot stepping distances
                 for i in range(len(sim.data.contact)):
                     contact = sim.data.contact[i]
@@ -269,6 +267,9 @@ class Individual:
                     right foot = 8
                     '''
 
+                    # contact checking code inspired by - user WuXinyang2012 on GitHub
+                    # https://gist.github.com/WuXinyang2012/b6649817101dfcb061eff901e9942057
+
                     # initial filter - keeping contacts with the floor and removing all others
                     geom_list = [contact.geom1, contact.geom2]
                     if contact.geom1 != contact.geom2 and 0 in geom_list:
@@ -276,22 +277,17 @@ class Individual:
                         # check for any foot touching
                         if 11 in geom_list or 8 in geom_list:
                             dist_between_steps = math.dist(contact.pos, foot_pos)
-                            # if iteration > foot_timestep and delta_distance_from_origin > 0:
                             if iteration > foot_timestep:
-                                # print(geom_list)
-                                # print('pos', contact.pos, foot_pos, dist_between_steps)
 
                                 # append changes in step distances
                                 gen_step_distance.append(dist_between_steps)
 
                                 # update previous distance and position values
-                                # dist = contact.dist
                                 foot_pos = contact.pos
                                 foot_timestep = iteration
 
-                                # print('updated timesteps and position: ', foot_timestep, dist)
-
-                # calculate speed - NOT using cvel (center of mass velocity), instead using mass_center from Humanoid
+                # calculate speed - NOT using cvel (center of mass velocity)
+                # instead using mass_center from Humanoid
                 new_center_of_mass = mass_center(env.model, sim)
                 dt = env.model.opt.timestep * env.frame_skip
                 v = (new_center_of_mass - center_of_mass) / dt
@@ -319,7 +315,6 @@ class Individual:
         :param arch_shape: shape of the archive
         :param r: row index of individual selected in archive
         :param c: col index of individual selected in archive
-        :return:
         """
 
         # make distinction between default map_elites and novelty_based map_elites
@@ -334,7 +329,6 @@ class Individual:
             weights[i] += k * np.random.uniform(-1, 1, weights[i].shape)
 
         self.genome.set_weights(weights)
-        return self.genome
 
     # get number of neighbors that sit in a given distance threshold
     # with help from this answer on StackOverflow: https://stackoverflow.com/a/44874588
