@@ -35,14 +35,14 @@ class NeuralNetwork:
                       loss='categorical_crossentropy',
                       metrics=['categorical_accuracy'])
 
-        print(model.summary())
+        # print(model.summary())
         return model
 
     def create_model(self):
         model = models.Sequential()
 
         # input layer
-        model.add(layers.Input(shape=(self.n_obs,)))
+        model.add(layers.InputLayer(input_shape=(self.n_obs,)))
 
         model.add(layers.Dense(self.n_hidden, activation='tanh',
                                kernel_initializer=random_kernel_for_layer(self.mean, self.stddev)))
@@ -55,5 +55,5 @@ class NeuralNetwork:
                       loss='categorical_crossentropy',
                       metrics=['categorical_accuracy'])
 
-        print(model.summary())
+        # print(model.summary())
         return model

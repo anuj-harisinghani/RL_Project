@@ -40,8 +40,10 @@ bootstrap_genome_map = burner_map.genome_map
 indices = np.argwhere(bootstrap_archive != 0)
 
 
-
-
+# actual running
+# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 default_map = MapElites(n_niches=n_niches, n_init_niches=n_init_niches)
+default_map.map_algorithm()
 
 
