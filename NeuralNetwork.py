@@ -23,7 +23,7 @@ class NeuralNetwork:
         model = models.Sequential()
 
         # input layer
-        model.add(layers.Dense(self.n_hidden, input_dim=self.n_obs, activation='sigmoid',
+        model.add(layers.Dense(self.n_hidden, input_dim=self.n_obs, activation='tanh',
                                kernel_initializer=random_kernel_for_layer(self.mean, self.stddev)))
         # hidden layer
         # model.add(layers.Dense(n_hidden, activation='sigmoid', kernel_initializer=random_kernel_for_layer(mean, stddev)))
@@ -35,16 +35,17 @@ class NeuralNetwork:
                       loss='categorical_crossentropy',
                       metrics=['categorical_accuracy'])
 
-        # print(model.summary())
+        print(model.summary())
         return model
 
     def create_model(self):
         model = models.Sequential()
 
         # input layer
-        model.add(layers.Dense(self.n_hidden, input_dim=self.n_obs, activation='sigmoid'))
+        model.add(layers.Dense(self.n_hidden, input_dim=self.n_obs, activation='tanh'))
         # hidden layer
-        # model.add(layers.Dense(n_hidden, activation='sigmoid', kernel_initializer=random_kernel_for_layer(mean, stddev)))
+        model.add(layers.Dense(self.n_hidden, activation='tanh',
+                               kernel_initializer=random_kernel_for_layer(self.mean, self.stddev)))
         # output layer
         model.add(layers.Dense(self.n_actions, activation='softmax'))
 

@@ -13,7 +13,7 @@ from NeuralNetwork import NeuralNetwork
 ENV = HumanoidEnv()
 n_actions = ENV.action_space.shape[0]
 n_obs = ENV.observation_space.shape[0]
-make_one_action = False
+make_one_action = True
 
 # Forcing code to use CPU - GPU is slow
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -208,7 +208,7 @@ class Individual:
 
     # function to fit the genome and produce total fitness score after specified number of generations
 
-    def fit_genome(self):
+    def fit_genome(self, render=False):
         """
         use this function to optimize the network by simulating it, use GA or ES or something
         P.S. NO NEED TO OPTIMIZE USING GA OR ES - JUST LET THE GENOTYPE RUN AND RECORD ITS FITNESS AND BEHAVIOR METRICS
@@ -251,6 +251,8 @@ class Individual:
                     action = preds
 
                 # step using the predicted action vector
+                if render:
+                    env.render()
                 obs, reward, done, info = env.step(action)
                 generation_reward.append(reward)
 
@@ -305,7 +307,7 @@ class Individual:
                     break
 
         env.close()
-        self.fitness = np.sum(genome_fitness)
+        self.fitness = np.mean(genome_fitness)
         self.step_distance = np.mean(step_distance)
         self.velocity = np.mean(velocity)
         # return genome_fitness
