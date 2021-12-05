@@ -75,7 +75,7 @@ class MapElites:
         else, initialize archive with zeros
         create genome map that keeps genome in cell (b1, b2) corresponding to the archive
         """
-        if self.bootstrap_archive is not None:
+        if self.bootstrap_archive != None:
             # use bootstrap
             self.archive = self.bootstrap_archive
             self.arch_shape = self.bootstrap_archive.shape
@@ -113,8 +113,8 @@ class MapElites:
         step_dist = x.step_distance * 10  # had to increase this value since they were so small
         velocity = x.velocity
 
-        max_step_dist = 1
-        max_vel = 5
+        max_step_dist = 0.5
+        max_vel = 0.5
 
         step_dist_range = np.arange(0, max_step_dist, max_step_dist/self.n_niches)
         vel_range = np.arange(0, max_vel, max_vel/self.n_niches)
@@ -156,7 +156,7 @@ class MapElites:
                 # get the archive indices of the randomly selected individual
                 r, c = self.random_selection_from_archive()
                 x = self.genome_map[r][c]  # get the actual genome that was stored in those indices
-                x.mutate_genome(self.arch_shape, r, c)  # mutate the genome
+                x = x.mutate_genome(self.arch_shape, r, c)  # mutate the genome
 
             # get behavior metric value and performance from fit_genome
             x.fit_genome()
@@ -204,8 +204,8 @@ class Individual:
         self.velocity = None
         self.genome = None
 
-        self.mean = np.random.uniform(-5, 5)
-        self.stddev = np.random.uniform(-1, 1)
+        self.mean = np.random.uniform(-15, 15)
+        self.stddev = np.random.uniform(-5, 5)
         self.n_actions = n_actions
         self.n_obs = n_obs
 
@@ -337,6 +337,7 @@ class Individual:
             weights[i] += k * np.random.uniform(-1, 1, weights[i].shape)
 
         self.genome.set_weights(weights)
+        return self
 
     # get number of neighbors that sit in a given distance threshold
     # with help from this answer on StackOverflow: https://stackoverflow.com/a/44874588
@@ -352,3 +353,33 @@ class Individual:
         # k will be the number of cells found in the mask that are True (i.e., within the distance threshold)
         k = len(np.argwhere(mask == True))
         return k
+
+
+    def test_genome(self, render=True):
+        env = HumanoidEnv()
+        obs = env.reset()
+        rewards = []
+
+        for _ in range(100000):
+            preds = self.genome.predict(obs.reshape(-1, len(obs)))
+
+            if make_one_action:
+                # preds is a (1, 17) shape vector, choose one action based on softmax
+                action = np.zeros(n_actions)
+                action[preds.argmax()] = 1
+
+            else:
+                action = preds
+
+            # step using the predicted action vector
+            if render:
+                env.render()
+            obs, reward, done, info = env.step(action)
+            rewards.append(reward)
+
+            if done:
+                break
+
+        env.close()
+        return np.mean(rewards)
+
