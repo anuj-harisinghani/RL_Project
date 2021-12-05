@@ -38,7 +38,7 @@ class NeuralNetwork:
         # print(model.summary())
         return model
 
-    def create_model(self):
+    def create_model(self, print_summary=False):
         model = models.Sequential()
 
         # input layer
@@ -46,7 +46,10 @@ class NeuralNetwork:
 
         model.add(layers.Dense(self.n_hidden, activation='tanh',
                                kernel_initializer=random_kernel_for_layer(self.mean, self.stddev)))
-        model.add(layers.Dense(self.n_hidden, activation='tanh',
+        model.add(layers.Dense(self.n_hidden//2, activation='tanh',
+                               kernel_initializer=random_kernel_for_layer(self.mean, self.stddev)))
+
+        model.add(layers.Dense(self.n_hidden//4, activation='tanh',
                                kernel_initializer=random_kernel_for_layer(self.mean, self.stddev)))
         # output layer
         model.add(layers.Dense(self.n_actions, activation='softmax'))
@@ -55,5 +58,7 @@ class NeuralNetwork:
                       loss='categorical_crossentropy',
                       metrics=['categorical_accuracy'])
 
-        # print(model.summary())
+        if print_summary:
+            print(model.summary())
+
         return model

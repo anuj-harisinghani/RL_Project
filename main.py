@@ -17,27 +17,38 @@ map_iterations = 1000
 # default params for Individual
 fit_generations = 10
 dist_threshold = None
-n_hidden = 75
+n_hidden = 150
 
 n_niches = 25
 n_cells = n_niches ** n_behaviors
 n_init_niches = int(0.4*n_cells)
 
 # creating bootstrap archive - created with n_behaviours and n_niches
-burner_map = MapElites(n_niches=n_niches, n_init_niches=n_init_niches)
-burner_map.init_archive()
-
-for i in range(n_init_niches):
-    burner_x = Individual(fit_generations, dist_threshold, n_hidden)
-    burner_x.init_random_genome()
-    burner_x.fit_genome()
-    burner_map.update_archive(burner_x)
-
-bootstrap_archive = burner_map.archive
-bootstrap_genome_map = burner_map.genome_map
+# burner_map = MapElites(n_niches=n_niches, n_init_niches=n_init_niches)
+# burner_map.init_archive()
+#
+# for i in range(n_init_niches):
+#     burner_x = Individual(fit_generations, dist_threshold, n_hidden)
+#     burner_x.init_random_genome()
+#     burner_x.fit_genome()
+#     burner_map.update_archive(burner_x)
+#
+# bootstrap_archive = burner_map.archive
+# bootstrap_genome_map = burner_map.genome_map
 
 # check number of initialized cells
 # indices = np.argwhere(bootstrap_archive != 0)
+
+# getting NN summary
+from gym.envs.mujoco.humanoid import HumanoidEnv
+from NeuralNetwork import NeuralNetwork
+make_one_action = True
+mean = np.random.uniform(-15, 15)
+stddev = np.random.uniform(-5, 5)
+n_actions = 17
+n_obs = HumanoidEnv().observation_space.shape[0]
+
+model = NeuralNetwork(n_obs, n_actions, n_hidden, mean, stddev).create_model(print_summary=True)
 
 
 # actual running
@@ -46,9 +57,25 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 default_map = MapElites(n_niches=n_niches, n_init_niches=n_init_niches, n_hidden=n_hidden)
 default_map.map_algorithm()
 
-from gym.envs.mujoco.humanoid import HumanoidEnv
-make_one_action = True
-n_actions = 17
+ar = default_map.archive
+gm = default_map.genome_map
+
+network_map = np.empty_like(gm)
+for r in range(len(gm)):
+    for c in range(len(gm[r])):
+        if gm[r][c] != None:
+            network_map[r][c] = gm[r][c].genome
+
+
+indices = np.argwhere(ar != 0)
+max_fit_ind = np.argwhere(ar == np.max(ar))
+
+import pickle
+import time
+
+with open('./default_arch.pkl', 'wb') as arch:
+    pickle.dump(ar, arch)
+
 
 # def test_genome(genome, render=True):
 #     env = HumanoidEnv()
@@ -79,23 +106,14 @@ n_actions = 17
 #     return np.mean(rewards)
 
 
-ar = default_map.archive
-gm = default_map.genome_map
-
-network_map = np.empty_like(gm)
-for r in range(len(gm)):
-    for c in range(len(gm[r])):
-        if gm[r][c] != None:
-            network_map[r][c] = gm[r][c].genome
 
 
-indices = np.argwhere(ar != 0)
-max_fit_ind = np.argwhere(ar == np.max(ar))
+
+
 
 import dill as pickle
 
-with open('./default_arch.pkl', 'wb') as arch:
-    pickle.dump(ar, arch)
+
 
 with open('./default_nm.pkl', 'wb') as nm:
     pickle.dump(network_map, nm)
