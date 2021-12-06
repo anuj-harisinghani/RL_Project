@@ -6,6 +6,8 @@ import math
 import time
 from tqdm import tqdm
 from gym.envs.mujoco.humanoid import HumanoidEnv, mass_center
+from tensorforce.core.networks import KerasNetwork, AutoNetwork
+from tensorforce import Agent
 
 from NeuralNetwork import NeuralNetwork
 
@@ -16,7 +18,7 @@ n_obs = ENV.observation_space.shape[0]
 make_one_action = True
 
 # Forcing code to use CPU - GPU is slow
-# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
@@ -75,17 +77,17 @@ class MapElites:
         else, initialize archive with zeros
         create genome map that keeps genome in cell (b1, b2) corresponding to the archive
         """
-        if self.bootstrap_archive != None:
-            # use bootstrap
-            self.archive = self.bootstrap_archive
-            self.arch_shape = self.bootstrap_archive.shape
-            self.genome_map = self.bootstrap_genome_map
-
-        else:
+        if type(self.bootstrap_archive) == :
             # create an empty archive with the given arch_dims and arch_size
             self.arch_shape = tuple(self.n_behaviors*[self.n_niches])
             self.archive = np.zeros(self.arch_shape)
             self.genome_map = np.empty(shape=self.archive.shape, dtype='object')
+
+        else:
+            # use bootstrap
+            self.archive = self.bootstrap_archive
+            self.arch_shape = self.bootstrap_archive.shape
+            self.genome_map = self.bootstrap_genome_map
 
     def generate_random_solution(self):
         """
@@ -113,8 +115,8 @@ class MapElites:
         step_dist = x.step_distance * 10  # had to increase this value since they were so small
         velocity = x.velocity
 
-        max_step_dist = 0.5
-        max_vel = 0.5
+        max_step_dist = 1
+        max_vel = 1
 
         step_dist_range = np.arange(0, max_step_dist, max_step_dist/self.n_niches)
         vel_range = np.arange(0, max_vel, max_vel/self.n_niches)
@@ -128,6 +130,7 @@ class MapElites:
             self.genome_map[row][col] = x
 
     def map_algorithm(self):
+        print('starting ', self.mode, ' ', self.dist_threshold)
         """
         MAP Elites algorithm - modified to take in a pre-initialized bootstrap_archive and to incorporate
         the distance threshold feature for novelty_based MAP Elites algorithm
@@ -144,15 +147,18 @@ class MapElites:
         else:
             start_index = self.n_init_niches
 
-        for i in tqdm(range(start_index, self.map_iterations), desc=self.mode+' map_iterations'):
+        for i in tqdm(range(start_index, self.map_iterations),
+                      desc=self.mode + ' ' + str(self.dist_threshold) + ' map_iterations'):
             x = None
             # generate random solution if i < n_init_niches
             if i < self.n_init_niches:
+                print('gen init_niches')
                 x = Individual(self.fit_generations, self.dist_threshold, self.n_hidden)
                 x.init_random_genome()
 
             # else, select randomly from the archive and mutate
             else:
+                print('mutating')
                 # get the archive indices of the randomly selected individual
                 r, c = self.random_selection_from_archive()
                 x = self.genome_map[r][c]  # get the actual genome that was stored in those indices
@@ -204,7 +210,7 @@ class Individual:
         self.velocity = None
         self.genome = None
 
-        self.mean = np.random.uniform(-15, 15)
+        self.mean = np.random.uniform(-100, 100)
         self.stddev = np.random.uniform(-5, 5)
         self.n_actions = n_actions
         self.n_obs = n_obs

@@ -44,17 +44,21 @@ class NeuralNetwork:
         # input layer
         model.add(layers.InputLayer(input_shape=(self.n_obs,)))
 
-        model.add(layers.Dense(self.n_hidden, activation='tanh',
+        model.add(layers.Dense(self.n_hidden, activation='sigmoid',
                                kernel_initializer=random_kernel_for_layer(self.mean, self.stddev)))
-        model.add(layers.Dense(self.n_hidden//2, activation='tanh',
+        model.add(layers.Dense(self.n_hidden//2, activation='sigmoid',
                                kernel_initializer=random_kernel_for_layer(self.mean, self.stddev)))
 
         model.add(layers.Dense(self.n_hidden//4, activation='tanh',
                                kernel_initializer=random_kernel_for_layer(self.mean, self.stddev)))
+
+        model.add(layers.Dense(self.n_hidden // 2, activation='sigmoid',
+                               kernel_initializer=random_kernel_for_layer(self.mean, self.stddev)))
+
         # output layer
         model.add(layers.Dense(self.n_actions, activation='softmax'))
 
-        model.compile(optimizer='sgd',
+        model.compile(optimizer='adam',
                       loss='categorical_crossentropy',
                       metrics=['categorical_accuracy'])
 
