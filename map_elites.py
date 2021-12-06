@@ -77,7 +77,7 @@ class MapElites:
         else, initialize archive with zeros
         create genome map that keeps genome in cell (b1, b2) corresponding to the archive
         """
-        if type(self.bootstrap_archive) == :
+        if isinstance(self.bootstrap_archive, type(None)):
             # create an empty archive with the given arch_dims and arch_size
             self.arch_shape = tuple(self.n_behaviors*[self.n_niches])
             self.archive = np.zeros(self.arch_shape)
