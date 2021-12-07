@@ -30,13 +30,14 @@ n_cells = n_niches ** n_behaviors
 n_init_niches = int(0.4*n_cells)
 
 
-def main(dist, mode, boot_arch):
+def main(dist, mode, boot_arch, boot_gm):
 
     # actual running
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     default_map = MapElites(mode=mode, map_iterations=map_iterations, n_niches=n_niches, dist_threshold=dist,
-                            n_init_niches=n_init_niches, n_hidden=n_hidden, bootstrap_archive=boot_arch)
+                            n_init_niches=n_init_niches, n_hidden=n_hidden,
+                            bootstrap_archive=boot_arch, bootstrap_genome_map=boot_gm)
     default_map.map_algorithm()
 
     ar = default_map.archive
@@ -80,7 +81,7 @@ if __name__ == '__main__':
     # creating bootstrap archive - created with n_behaviours and n_niches
     burner_map = MapElites(map_iterations=map_iterations, n_niches=n_niches, n_init_niches=n_init_niches,
                            dist_threshold=None, n_hidden=n_hidden)
-    burner_map.init_archive()
+    # burner_map.init_archive()
 
     dist_threshold = None
     for i in tqdm(range(n_init_niches), desc='bootstrap_archive'):
@@ -100,32 +101,12 @@ if __name__ == '__main__':
     bootstrap_indices = np.argwhere(bootstrap_archive != 0)
     max_fit_ind = np.argwhere(bootstrap_archive == np.max(bootstrap_archive))
 
-    cpu_count = 2
-    pool = mp.Pool(processes=cpu_count)
-    cv = [pool.apply_async(main, args=(dist_range[i], modes[i])) for i in range(len(dist_range))]
-    op = [p.get() for p in cv]
+    # multiprocessing - for some reason it's not working
+    # cpu_count = os.cpu_count()
+    # pool = mp.Pool(processes=cpu_count)
+    # cv = [pool.apply_async(main, args=(dist_range[i], modes[i], bootstrap_archive, bootstrap_genome_map))
+    #       for i in range(len(dist_range))]
+    # op = [p.get() for p in cv]
 
-#
-#
-# import dill as pickle
-#
-#
-#
-# with open('./default_nm.pkl', 'wb') as nm:
-#     pickle.dump(network_map, nm)
-#
-#
-# import matplotlib.pyplot as plt
-# import matplotlib.colors as colors
-#
-#
-# fig, ax = plt.subplots()
-# # bounds = np.array([0, np.min(ar[ar > 0]), np.max(ar)])
-# norm = colors.TwoSlopeNorm(vmin=0, vcenter=np.min(ar[ar>0]), vmax=np.max(ar))
-# pcm = ax.pcolormesh(ar, norm=norm)
-
-
-# for final analysis and results:
-# 1. get archives, plot their heatmaps, show where the archive is filled
-# 2. make comparison of number of cells filled
-# 3. make bootstrap, run that
+    for i in range(len(dist_range)):
+        main(dist_range[i], modes[i], bootstrap_archive, bootstrap_genome_map)
