@@ -6,9 +6,6 @@ import math
 import time
 from tqdm import tqdm
 from gym.envs.mujoco.humanoid import HumanoidEnv, mass_center
-from tensorforce.core.networks import KerasNetwork, AutoNetwork
-from tensorforce import Agent
-
 from NeuralNetwork import NeuralNetwork
 
 # getting environment variables
@@ -360,7 +357,6 @@ class Individual:
         k = len(np.argwhere(mask == True))
         return k
 
-
     def test_genome(self, render=True):
         env = HumanoidEnv()
         obs = env.reset()
@@ -388,4 +384,3 @@ class Individual:
 
         env.close()
         return np.mean(rewards)
-
