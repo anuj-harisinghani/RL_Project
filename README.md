@@ -8,3 +8,5 @@ https://arxiv.org/pdf/1504.04909.pdf
 
 MuJoCo: https://mujoco.org/
 MuJoCo Py: https://github.com/openai/mujoco-py
+
+My contributions and the results for this course project: https://youtu.be/kvmVyR_DOIs
